@@ -1,0 +1,27 @@
+{
+  "window": {
+    "width": 380,
+    "height": 104,
+    "opacity": 1.0,
+    "radius": 8
+  },
+  "layout": {
+    "show_album_art": true,
+    "show_album": true,
+    "show_progress_bar": true,
+    "progress_width": 168
+  },
+  "style": {
+    "font_family": "Segoe UI",
+    "title_size": 14,
+    "artist_size": 11,
+    "meta_size": 10,
+    "background_color": "#1e2329",
+    "border_color": "#2b3139",
+    "text_color": "#eaecef",
+    "sub_text_color": "#929aa5",
+    "muted_text_color": "#707a8a",
+    "progress_color": "#FCD535",
+    "progress_background_color": "#2b3139"
+  }
+}

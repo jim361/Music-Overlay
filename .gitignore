@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local probe/runtime artifacts
+probe-output/
+python-*.exe
+
+# Build artifacts
+build/
+dist/
+release/
+artifacts/
+*.zip
+*.spec
+!packaging/*.spec
+
+# Local user settings
+settings.local.json
+*.log

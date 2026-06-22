@@ -1,0 +1,26 @@
+{
+  "window": {
+    "width": 320,
+    "height": 84,
+    "opacity": 1.0,
+    "radius": 6
+  },
+  "layout": {
+    "show_album_art": false,
+    "show_album": false,
+    "show_progress_bar": true,
+    "progress_width": 150
+  },
+  "style": {
+    "title_size": 13,
+    "artist_size": 10,
+    "meta_size": 10,
+    "background_color": "#1e2329",
+    "border_color": "#2b3139",
+    "text_color": "#eaecef",
+    "sub_text_color": "#929aa5",
+    "muted_text_color": "#707a8a",
+    "progress_color": "#FCD535",
+    "progress_background_color": "#2b3139"
+  }
+}
