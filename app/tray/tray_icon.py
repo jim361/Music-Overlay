@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from app.media.media_models import MediaSnapshot
 from app.overlay.overlay_window import OverlayWindow
+from app.utils.paths import resource_path
 
 
 class TrayIcon(QObject):
@@ -16,7 +17,7 @@ class TrayIcon(QObject):
         self.window = window
         self.open_settings = open_settings
         self.last_snapshot: MediaSnapshot | None = None
-        self.fallback_icon = build_fallback_icon()
+        self.fallback_icon = load_app_icon()
 
         self.tray = QSystemTrayIcon(self)
         self.tray.setIcon(self.fallback_icon)
@@ -132,3 +133,12 @@ def build_fallback_icon() -> QIcon:
     painter.end()
 
     return QIcon(pixmap)
+
+
+def load_app_icon() -> QIcon:
+    icon_path = resource_path("assets", "app_icon.ico")
+    if icon_path.exists():
+        icon = QIcon(str(icon_path))
+        if not icon.isNull():
+            return icon
+    return build_fallback_icon()

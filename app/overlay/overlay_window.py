@@ -153,7 +153,7 @@ class OverlayWindow(QWidget):
         self._sync_display_visibility()
 
         radius = int(window["radius"])
-        font_family = style["font_family"]
+        font_family = self.overlay_text_option("font_family", style["font_family"])
         opacity = self.background_opacity()
         card_background = rgba_from_hex(
             style["background_color"],
@@ -459,6 +459,11 @@ class OverlayWindow(QWidget):
     def overlay_color_option(self, key: str, fallback: str) -> str:
         overlay = self.settings.get("overlay", {})
         return normalized_hex_color(str(overlay.get(key, fallback)), fallback)
+
+    def overlay_text_option(self, key: str, fallback: str) -> str:
+        overlay = self.settings.get("overlay", {})
+        value = str(overlay.get(key, fallback)).strip()
+        return value or fallback
 
     def set_overlay_style_option(self, key: str, value: Any) -> None:
         self.settings.update_overlay_option(key, value)

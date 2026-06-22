@@ -21,6 +21,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "show_time": True,
         "show_progress_bar": True,
         "background_opacity": 0.92,
+        "font_family": "Segoe UI",
         "title_size": 14,
         "detail_size": 11,
         "meta_size": 10,

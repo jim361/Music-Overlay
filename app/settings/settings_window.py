@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
     QComboBox,
     QFormLayout,
+    QFontComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -117,6 +118,10 @@ class SettingsWindow(QWidget):
         self.album_art_check = QCheckBox("Show thumbnail")
         self.album_art_check.stateChanged.connect(self._album_art_changed)
         form.addRow("Thumbnail", self.album_art_check)
+
+        self.font_combo = QFontComboBox()
+        self.font_combo.currentFontChanged.connect(self._font_family_changed)
+        form.addRow("Font", self.font_combo)
 
         for label, key, minimum, maximum, _default in FONT_SIZE_OPTIONS:
             row = QHBoxLayout()
@@ -251,6 +256,8 @@ class SettingsWindow(QWidget):
         self.time_check.setChecked(bool(overlay_settings.get("show_time", True)))
         self.progress_check.setChecked(bool(overlay_settings.get("show_progress_bar", True)))
         self.album_art_check.setChecked(bool(overlay_settings.get("show_album_art", True)))
+        font_family = str(overlay_settings.get("font_family", "Segoe UI"))
+        self.font_combo.setCurrentFont(QFont(font_family))
 
         for _label, key, minimum, maximum, default in FONT_SIZE_OPTIONS:
             value = int(overlay_settings.get(key, default))
@@ -286,6 +293,10 @@ class SettingsWindow(QWidget):
     def _album_art_changed(self) -> None:
         if not self._syncing:
             self.overlay.set_show_album_art(self.album_art_check.isChecked())
+
+    def _font_family_changed(self, font: QFont) -> None:
+        if not self._syncing:
+            self.overlay.set_overlay_style_option("font_family", font.family())
 
     def _font_size_changed(self, key: str, value: int) -> None:
         if not self._syncing:

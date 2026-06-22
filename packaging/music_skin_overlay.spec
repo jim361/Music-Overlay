@@ -10,6 +10,7 @@ project_root = Path(SPECPATH).parent
 hiddenimports = collect_submodules("winsdk")
 
 datas = [
+    (str(project_root / "assets"), "assets"),
     (str(project_root / "themes"), "themes"),
 ]
 
@@ -37,6 +38,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name="MusicSkinOverlay",
+    icon=str(project_root / "assets" / "app_icon.ico"),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

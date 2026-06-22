@@ -16,16 +16,26 @@ It is intentionally viewer-only. It does not control playback. It shows what is 
 - Thumbnail on/off
 - Background opacity from 0% to 100%
 - Time and progress bar on/off
+- Font family selection
 - Title/detail/meta font size controls
 - Title/detail/meta/accent color controls
 - Smooth local interpolation for time and progress between GSMTC updates
+- Dedicated app icon and setup wizard support
 
 ## Download And Run
 
+The easiest option is the setup wizard.
+
 1. Open the [Releases](https://github.com/jim361/Music-Overlay/releases/latest) page.
-2. Download `MusicSkinOverlay-...-win-x64.zip`.
-3. Extract the zip file.
-4. Run:
+2. Download `MusicOverlaySetup-...-win-x64.exe`.
+3. Run the setup wizard.
+4. Launch Music Overlay from the Start menu or desktop shortcut.
+
+If you prefer a portable version:
+
+1. Download `MusicSkinOverlay-...-win-x64.zip`.
+2. Extract the zip file.
+3. Run:
 
 ```text
 MusicSkinOverlay\MusicSkinOverlay.exe
@@ -33,8 +43,9 @@ MusicSkinOverlay\MusicSkinOverlay.exe
 
 Important:
 
-- Do not copy only `MusicSkinOverlay.exe` out of the folder.
+- For the zip version, do not copy only `MusicSkinOverlay.exe` out of the folder.
 - The `_internal` folder must stay next to the exe.
+- Users do not need to install Python separately. The required runtime is bundled in the exe/installer.
 - Windows SmartScreen may warn because the executable is not code-signed yet.
 
 ## Usage
@@ -55,6 +66,7 @@ The settings window supports:
 - Background opacity
 - Show time
 - Show progress bar
+- Font
 - Title size
 - Detail size
 - Meta size
@@ -104,23 +116,19 @@ Build the Windows executable folder:
 powershell -ExecutionPolicy Bypass -File scripts\build_exe.ps1
 ```
 
-Build output:
-
-```text
-dist\MusicSkinOverlay\MusicSkinOverlay.exe
-```
-
 Create a release zip:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.1.0
+powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.2.0
 ```
 
-Package output:
+Create the setup wizard:
 
-```text
-artifacts\MusicSkinOverlay-v0.1.0-win-x64.zip
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Version v0.2.0
 ```
+
+The setup wizard build requires Inno Setup 6.
 
 ## Notes
 

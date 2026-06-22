@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from app.config.settings_manager import SettingsManager
@@ -14,6 +15,7 @@ from app.media.session_selector import SourcePreference
 from app.overlay.overlay_window import OverlayWindow
 from app.settings.settings_window import SettingsWindow
 from app.tray.tray_icon import TrayIcon
+from app.utils.paths import resource_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,6 +85,9 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Music Skin Overlay")
     app.setQuitOnLastWindowClosed(False)
+    icon_path = resource_path("assets", "app_icon.ico")
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     window = OverlayWindow(provider=provider, theme=theme, settings=settings)
     settings_window = SettingsWindow(

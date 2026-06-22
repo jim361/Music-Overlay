@@ -16,16 +16,26 @@ Music Overlay는 Windows의 GSMTC(Global System Media Transport Controls) 정보
 - 썸네일 표시 켜기/끄기
 - 배경 투명도 0%~100%
 - 시간/재생바 표시 켜기/끄기
+- 폰트 패밀리 선택
 - 제목/상세/메타 폰트 크기 조절
 - 제목/상세/메타/accent 색상 조절
 - GSMTC 위치 갱신이 느릴 때도 시간/재생바를 부드럽게 보간
+- 전용 앱 아이콘과 설치 마법사 지원
 
 ## 다운로드 및 실행
 
+가장 쉬운 방법은 설치 마법사를 사용하는 것입니다.
+
 1. [Releases](https://github.com/jim361/Music-Overlay/releases/latest) 페이지로 이동합니다.
-2. `MusicSkinOverlay-...-win-x64.zip` 파일을 다운로드합니다.
-3. 원하는 위치에 압축을 풉니다.
-4. 아래 파일을 실행합니다.
+2. `MusicOverlaySetup-...-win-x64.exe` 파일을 다운로드합니다.
+3. 설치 마법사를 실행합니다.
+4. 설치가 끝나면 시작 메뉴 또는 바탕화면 바로가기로 실행합니다.
+
+설치 없이 portable 방식으로 쓰고 싶다면:
+
+1. `MusicSkinOverlay-...-win-x64.zip` 파일을 다운로드합니다.
+2. 원하는 위치에 압축을 풉니다.
+3. 아래 파일을 실행합니다.
 
 ```text
 MusicSkinOverlay\MusicSkinOverlay.exe
@@ -33,8 +43,9 @@ MusicSkinOverlay\MusicSkinOverlay.exe
 
 주의:
 
-- `MusicSkinOverlay.exe`만 따로 꺼내서 실행하지 마세요.
+- zip 버전은 `MusicSkinOverlay.exe`만 따로 꺼내서 실행하지 마세요.
 - `_internal` 폴더가 exe 옆에 그대로 있어야 합니다.
+- Python을 따로 설치할 필요는 없습니다. 필요한 런타임은 exe/installer에 포함됩니다.
 - 아직 코드 서명이 없어서 Windows SmartScreen 경고가 뜰 수 있습니다.
 
 ## 사용 방법
@@ -55,6 +66,7 @@ MusicSkinOverlay\MusicSkinOverlay.exe
 - Background opacity
 - Show time
 - Show progress bar
+- Font
 - Title size
 - Detail size
 - Meta size
@@ -104,23 +116,19 @@ Windows 실행 폴더를 빌드합니다.
 powershell -ExecutionPolicy Bypass -File scripts\build_exe.ps1
 ```
 
-빌드 결과:
-
-```text
-dist\MusicSkinOverlay\MusicSkinOverlay.exe
-```
-
 릴리즈 zip 생성:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.1.0
+powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.2.0
 ```
 
-결과:
+설치 마법사 생성:
 
-```text
-artifacts\MusicSkinOverlay-v0.1.0-win-x64.zip
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Version v0.2.0
 ```
+
+설치 마법사 빌드에는 Inno Setup 6가 필요합니다.
 
 ## 참고
 
