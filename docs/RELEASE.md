@@ -16,7 +16,7 @@ Use semantic version tags:
 
 ```text
 v0.1.0
-v0.2.0
+v0.3.0
 v1.0.0
 ```
 
@@ -31,25 +31,25 @@ powershell -ExecutionPolicy Bypass -File scripts\build_exe.ps1
 Create the portable release zip:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.2.0
+powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.3.0
 ```
 
 Expected output:
 
 ```text
-artifacts\MusicSkinOverlay-v0.2.0-win-x64.zip
+artifacts\MusicSkinOverlay-v0.3.0-win-x64.zip
 ```
 
 Create the setup wizard:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Version v0.2.0
+powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Version v0.3.0
 ```
 
 Expected output:
 
 ```text
-artifacts\MusicOverlaySetup-v0.2.0-win-x64.exe
+artifacts\MusicOverlaySetup-v0.3.0-win-x64.exe
 ```
 
 Installer builds require Inno Setup 6.
@@ -59,9 +59,9 @@ Installer builds require Inno Setup 6.
 After changes are pushed to GitHub:
 
 ```powershell
-git tag v0.2.0
+git tag v0.3.0
 git push origin main
-git push origin v0.2.0
+git push origin v0.3.0
 ```
 
 The `Windows Build` workflow will:
@@ -79,7 +79,7 @@ The `Windows Build` workflow will:
 Tell users to prefer the setup wizard:
 
 ```text
-MusicOverlaySetup-v0.2.0-win-x64.exe
+MusicOverlaySetup-v0.3.0-win-x64.exe
 ```
 
 For portable use, tell users to extract the zip and run:

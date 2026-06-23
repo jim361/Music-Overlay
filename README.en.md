@@ -1,28 +1,50 @@
 # Music Overlay
 
+A compact Windows now-playing overlay for music and video sessions.
+
+Music Overlay reads media sessions exposed through GSMTC (Global System Media Transport Controls) and shows what is currently playing in a small always-on-top card. It is intentionally viewer-only: no play, pause, skip, or seek controls. Think of it as a lightweight radio now-playing display, not a mini player.
+
 [한국어](README.ko.md)
 
-Music Overlay is a small Windows now-playing overlay for media sessions exposed through GSMTC (Global System Media Transport Controls).
+## Table Of Contents
 
-It is intentionally viewer-only. It does not control playback. It shows what is playing in a compact always-on-top overlay, closer to a radio now-playing card than a mini player.
+- [Why This Exists](#why-this-exists)
+- [Features](#features)
+- [Download](#download)
+- [Usage](#usage)
+- [Settings](#settings)
+- [Run From Source](#run-from-source)
+- [Build](#build)
+- [Notes](#notes)
+- [License](#license)
+
+## Why This Exists
+
+When music is playing in the background, checking the current track should not mean hunting for a browser tab or opening a full player window.
+
+Music Overlay keeps that job small:
+
+- show the current media title in a compact overlay
+- optionally appear only when the track/video changes
+- stay viewer-only without playback controls
+- work with Spotify, browser-based music/video, and other Windows media sessions
 
 ## Features
 
-- Windows GSMTC media session support
-- Spotify, Chrome, Edge, current session, and auto source selection
-- Compact always-on-top overlay
-- System tray menu
-- Separate settings window
-- Thumbnail on/off
+- Spotify, Chrome, Edge, and current Windows media session support
+- Auto / Spotify / Chrome / Edge / Current source selection
+- Always visible mode or show-on-media-change mode
+- Album-art-only mode
+- Separate toggles for thumbnail, title, details, time, and progress bar
+- Pixel-based title width control for `...` truncation
 - Background opacity from 0% to 100%
-- Time and progress bar on/off
-- Font family selection
-- Title/detail/meta font size controls
-- Title/detail/meta/accent color controls
-- Smooth local interpolation for time and progress between GSMTC updates
-- Dedicated app icon and setup wizard support
+- Font family, font size, and color customization
+- English and Korean settings UI
+- System tray icon and context menus
+- Windows installer and portable zip builds
+- No Python installation needed for release builds
 
-## Download And Run
+## Download
 
 The easiest option is the setup wizard.
 
@@ -41,40 +63,42 @@ If you prefer a portable version:
 MusicSkinOverlay\MusicSkinOverlay.exe
 ```
 
-Important:
-
-- For the zip version, do not copy only `MusicSkinOverlay.exe` out of the folder.
-- The `_internal` folder must stay next to the exe.
-- Users do not need to install Python separately. The required runtime is bundled in the exe/installer.
-- Windows SmartScreen may warn because the executable is not code-signed yet.
+For the portable version, keep the `_internal` folder next to the exe. Do not copy only `MusicSkinOverlay.exe` out of the folder.
 
 ## Usage
 
 - Drag the overlay to move it.
 - Click or double-click the system tray icon to show or hide the overlay.
-- Right-click the system tray icon to select a source or open settings.
+- Right-click the system tray icon to select a source, refresh, open settings, or quit.
 - Right-click the overlay to refresh, select a source, open settings, or quit.
 - `F5`: refresh now
 - `Esc`: quit
 
 ## Settings
 
-The settings window supports:
+The settings window is split into `Basic` and `Advanced`.
 
-- Preferred source
-- Show thumbnail
-- Background opacity
-- Show time
-- Show progress bar
-- Font
-- Title size
-- Detail size
-- Meta size
-- Title color
-- Detail color
-- Meta color
-- Accent color
-- Reset Position
+### Basic
+
+- `Language`: English / 한국어
+- `Preferred source`: Auto, Spotify, Chrome, Edge, Current Windows session
+- `Display mode`: always visible or show on media change
+- `Show duration`: how long the overlay stays visible in auto-hide mode
+- `Thumbnail`: show album art / thumbnail
+- `Title`: show title
+- `Details`: show artist and album
+- `Time`: show time
+- `Progress`: show progress bar
+
+For album-art-only mode, keep `Thumbnail` on and turn off `Title`, `Details`, `Time`, and `Progress`.
+
+### Advanced
+
+- `Background opacity`: overlay background opacity
+- `Overlay text width`: where long titles become `...`
+- `Font`: choose from system fonts installed on the current PC
+- `Title / Detail / Meta size`: font sizes
+- `Title / Detail / Meta / Accent color`: colors
 
 ## Run From Source
 
@@ -119,13 +143,13 @@ powershell -ExecutionPolicy Bypass -File scripts\build_exe.ps1
 Create a release zip:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.2.0
+powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -Version v0.3.0
 ```
 
 Create the setup wizard:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Version v0.2.0
+powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Version v0.3.0
 ```
 
 The setup wizard build requires Inno Setup 6.
@@ -134,8 +158,9 @@ The setup wizard build requires Inno Setup 6.
 
 - This app does not provide play, pause, next, previous, or seek controls.
 - Thumbnail data is displayed from memory and is not saved to disk during normal use.
-- If multiple media sessions exist, choose a preferred source from settings.
-- The executable is currently unsigned.
+- If multiple media sessions exist, choose a preferred source in settings.
+- The executable is currently unsigned, so Windows SmartScreen may show a warning.
+- Font files are not bundled. The app uses system fonts installed on the user's PC.
 
 ## License
 

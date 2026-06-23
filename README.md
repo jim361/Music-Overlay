@@ -1,10 +1,12 @@
 # Music Overlay
 
-Choose a language:
+A compact Windows now-playing overlay for GSMTC media sessions.
+
+## Language
 
 - [한국어](README.ko.md)
 - [English](README.en.md)
 
----
+## Download
 
-Music Overlay is a Windows now-playing overlay for media sessions exposed through GSMTC.
+Get the latest Windows installer or portable zip from [Releases](https://github.com/jim361/Music-Overlay/releases/latest).

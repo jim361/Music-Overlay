@@ -95,7 +95,7 @@ def main() -> int:
         settings=settings,
     )
     window.open_settings = settings_window.open
-    window.show()
+    window.apply_initial_visibility()
     tray = TrayIcon(window, open_settings=settings_window.open)
     tray.show()
 

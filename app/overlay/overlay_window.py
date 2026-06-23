@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.config.settings_manager import SettingsManager
+from app.localization import normalize_language, translate
 from app.media.media_models import MediaSnapshot
 from app.media.now_playing_provider import NowPlayingProvider
 from app.media.session_selector import SourcePreference
@@ -32,6 +33,9 @@ CARD_SPACING = 12
 DEFAULT_TEXT_WIDTH = 440
 MIN_TEXT_WIDTH = 180
 MAX_TEXT_WIDTH = 760
+DEFAULT_AUTO_HIDE_SECONDS = 6
+MIN_AUTO_HIDE_SECONDS = 1
+MAX_AUTO_HIDE_SECONDS = 60
 TEXT_ROW_SPACING = 4
 
 
@@ -43,6 +47,9 @@ class ElidedLabel(QLabel):
     def setText(self, text: str) -> None:  # type: ignore[override]
         self._full_text = text
         self.refresh_elision()
+
+    def full_text(self) -> str:
+        return self._full_text
 
     def sizeHint(self) -> QSize:  # type: ignore[override]
         hint = super().sizeHint()
@@ -93,6 +100,7 @@ class OverlayWindow(QWidget):
         self._display_snapshot: MediaSnapshot | None = None
         self._display_snapshot_time = 0.0
         self._album_art_size = DEFAULT_ALBUM_ART_SIZE
+        self._last_revealed_track_key = None
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="media-provider")
         self._pending_snapshot: Future[MediaSnapshot] | None = None
         self.open_settings: Callable[[], None] | None = None
@@ -110,6 +118,10 @@ class OverlayWindow(QWidget):
         self.display_timer = QTimer(self)
         self.display_timer.timeout.connect(self.update_progress_display)
         self.display_timer.start(250)
+
+        self.auto_hide_timer = QTimer(self)
+        self.auto_hide_timer.setSingleShot(True)
+        self.auto_hide_timer.timeout.connect(self.hide)
         self.refresh()
 
     def _setup_window(self) -> None:
@@ -285,6 +297,8 @@ class OverlayWindow(QWidget):
 
     def update_snapshot(self, snapshot: MediaSnapshot) -> None:
         snapshot = self.reconciled_snapshot(snapshot)
+        previous_snapshot = self._display_snapshot
+        should_reveal = self.should_reveal_for_snapshot(previous_snapshot, snapshot)
         title = snapshot.title or "No media playing"
         artist = snapshot.artist or "Unknown artist"
         album = snapshot.album or ""
@@ -294,13 +308,14 @@ class OverlayWindow(QWidget):
         self.title_label.setText(title)
         self.artist_label.setText(artist)
         self.album_label.setText(album)
-        self.album_label.setVisible(bool(self.theme["layout"]["show_album"]) and bool(album))
         self.update_progress_display()
         self._sync_display_visibility()
         self._update_album_art_size()
         self._resize_to_content()
         if self.show_album_art_enabled():
             self._update_album_art(snapshot)
+        if should_reveal:
+            self.reveal_temporarily()
         self.snapshot_updated.emit(snapshot)
 
     def reconciled_snapshot(self, snapshot: MediaSnapshot) -> MediaSnapshot:
@@ -404,31 +419,32 @@ class OverlayWindow(QWidget):
 
     def _show_context_menu(self, position: QPoint) -> None:
         menu = QMenu(self)
+        language = self.language()
 
-        refresh_action = QAction("Refresh now", self)
+        refresh_action = QAction(translate("refresh_now", language), self)
         refresh_action.triggered.connect(self.refresh)
         menu.addAction(refresh_action)
 
-        source_menu = menu.addMenu("Media source")
-        for label, source in (
-            ("Auto", "auto"),
-            ("Spotify", "spotify"),
-            ("Chrome", "chrome"),
-            ("Edge", "edge"),
-            ("Current Windows session", "current"),
+        source_menu = menu.addMenu(translate("media_source", language))
+        for label_key, source in (
+            ("source_auto", "auto"),
+            ("source_spotify", "spotify"),
+            ("source_chrome", "chrome"),
+            ("source_edge", "edge"),
+            ("source_current", "current"),
         ):
-            action = QAction(label, self)
+            action = QAction(translate(label_key, language), self)
             action.setCheckable(True)
             action.setChecked(self.current_source() == source)
             action.triggered.connect(lambda checked=False, value=source: self.set_source(value))
             source_menu.addAction(action)
 
         if self.open_settings is not None:
-            settings_action = QAction("Settings...", self)
+            settings_action = QAction(translate("settings", language), self)
             settings_action.triggered.connect(self.open_settings)
             menu.addAction(settings_action)
 
-        quit_action = QAction("Quit", self)
+        quit_action = QAction(translate("quit", language), self)
         quit_action.triggered.connect(lambda: QApplication.instance().quit())
         menu.addAction(quit_action)
 
@@ -465,6 +481,78 @@ class OverlayWindow(QWidget):
         self._last_track_key = None
         self.refresh()
 
+    def language(self) -> str:
+        overlay = self.settings.get("overlay", {})
+        return normalize_language(str(overlay.get("language", "en")))
+
+    def set_language(self, language: str) -> None:
+        self.settings.update_overlay_option("language", normalize_language(language))
+
+    def display_mode(self) -> str:
+        overlay = self.settings.get("overlay", {})
+        mode = str(overlay.get("display_mode", "always"))
+        if mode not in {"always", "on_change"}:
+            return "always"
+        return mode
+
+    def set_display_mode(self, mode: str) -> None:
+        mode = mode if mode in {"always", "on_change"} else "always"
+        self.settings.update_overlay_option("display_mode", mode)
+        self.apply_display_mode()
+
+    def auto_hide_seconds(self) -> int:
+        overlay = self.settings.get("overlay", {})
+        try:
+            value = int(overlay.get("auto_hide_seconds", DEFAULT_AUTO_HIDE_SECONDS))
+        except (TypeError, ValueError):
+            value = DEFAULT_AUTO_HIDE_SECONDS
+        return max(MIN_AUTO_HIDE_SECONDS, min(MAX_AUTO_HIDE_SECONDS, value))
+
+    def set_auto_hide_seconds(self, seconds: int) -> None:
+        value = max(MIN_AUTO_HIDE_SECONDS, min(MAX_AUTO_HIDE_SECONDS, int(seconds)))
+        self.settings.update_overlay_option("auto_hide_seconds", value)
+        if self.display_mode() == "on_change" and self.isVisible():
+            self.reveal_temporarily()
+
+    def apply_initial_visibility(self) -> None:
+        if self.display_mode() == "on_change":
+            self.hide()
+        else:
+            self.show()
+
+    def apply_display_mode(self) -> None:
+        self.auto_hide_timer.stop()
+        if self.display_mode() == "always":
+            self.show()
+            self.raise_()
+        else:
+            self.hide()
+
+    def should_reveal_for_snapshot(
+        self,
+        previous: MediaSnapshot | None,
+        snapshot: MediaSnapshot,
+    ) -> bool:
+        if self.display_mode() != "on_change":
+            return False
+        if not is_revealable_media(snapshot):
+            return False
+
+        track_key = snapshot.track_key
+        previous_key = previous.track_key if previous and is_revealable_media(previous) else None
+        if track_key == previous_key:
+            return False
+        if track_key == self._last_revealed_track_key:
+            return False
+
+        self._last_revealed_track_key = track_key
+        return True
+
+    def reveal_temporarily(self) -> None:
+        self.show()
+        self.raise_()
+        self.auto_hide_timer.start(self.auto_hide_seconds() * 1000)
+
     def show_album_art_enabled(self) -> bool:
         layout = self.theme.get("layout", {})
         overlay = self.settings.get("overlay", {})
@@ -474,12 +562,32 @@ class OverlayWindow(QWidget):
 
     def set_show_album_art(self, enabled: bool) -> None:
         self.settings.update_overlay_option("show_album_art", bool(enabled))
-        self.album_art.setVisible(self.show_album_art_enabled())
+        self._sync_display_visibility()
         self._update_album_art_size(refresh_pixmap=enabled)
         self._resize_to_content()
         if enabled:
             self._last_track_key = None
             self.refresh()
+
+    def show_title_enabled(self) -> bool:
+        overlay = self.settings.get("overlay", {})
+        return bool(overlay.get("show_title", True))
+
+    def set_show_title(self, enabled: bool) -> None:
+        self.settings.update_overlay_option("show_title", bool(enabled))
+        self._sync_display_visibility()
+        self._update_album_art_size(refresh_pixmap=True)
+        self._resize_to_content()
+
+    def show_details_enabled(self) -> bool:
+        overlay = self.settings.get("overlay", {})
+        return bool(overlay.get("show_details", True))
+
+    def set_show_details(self, enabled: bool) -> None:
+        self.settings.update_overlay_option("show_details", bool(enabled))
+        self._sync_display_visibility()
+        self._update_album_art_size(refresh_pixmap=True)
+        self._resize_to_content()
 
     def show_time_enabled(self) -> bool:
         overlay = self.settings.get("overlay", {})
@@ -537,9 +645,22 @@ class OverlayWindow(QWidget):
     def _sync_display_visibility(self) -> None:
         show_progress = self.show_progress_bar_enabled()
         show_time = self.show_time_enabled()
+        show_title = self.show_title_enabled()
+        show_details = self.show_details_enabled()
+        show_album_art = self.show_album_art_enabled()
+        show_album = (
+            show_details
+            and bool(self.theme.get("layout", {}).get("show_album", True))
+            and bool(self.album_label.full_text())
+        )
+        self.album_art.setVisible(show_album_art)
+        self.title_label.setVisible(show_title)
+        self.artist_label.setVisible(show_details)
+        self.album_label.setVisible(show_album)
         self.progress.setVisible(show_progress)
         self.time_label.setVisible(show_time)
         self.bottom_widget.setVisible(show_progress or show_time)
+        self.text_panel.setVisible(show_title or show_details or show_album or show_progress or show_time)
 
     def _refresh_elided_labels(self) -> None:
         self.title_label.refresh_elision()
@@ -601,11 +722,22 @@ class OverlayWindow(QWidget):
 
     def _target_window_width(self, text_width: int) -> int:
         art_width = self._album_art_size if self.show_album_art_enabled() else 0
-        spacing = CARD_SPACING if art_width else 0
+        has_text = self.text_panel.isVisible()
+        spacing = CARD_SPACING if art_width and has_text else 0
+        text_width = text_width if has_text else 0
         return CARD_MARGIN * 2 + art_width + spacing + text_width
 
     def _target_text_width(self) -> int:
         layout = self.theme.get("layout", {})
+        fallback = self._theme_text_width(layout)
+        overlay = self.settings.get("overlay", {})
+        try:
+            value = int(overlay.get("text_width", fallback))
+        except (TypeError, ValueError):
+            value = fallback
+        return max(MIN_TEXT_WIDTH, min(MAX_TEXT_WIDTH, value))
+
+    def _theme_text_width(self, layout: dict[str, Any]) -> int:
         fallback = self._fallback_text_width()
         try:
             value = int(layout.get("text_width", fallback))
@@ -628,7 +760,10 @@ class OverlayWindow(QWidget):
         if visible:
             self.show()
             self.raise_()
+            if self.display_mode() == "on_change":
+                self.auto_hide_timer.start(self.auto_hide_seconds() * 1000)
         else:
+            self.auto_hide_timer.stop()
             self.hide()
 
     def apply_theme(self, theme: dict[str, Any]) -> None:
@@ -659,6 +794,15 @@ def format_time(value: float | None) -> str:
 
 def is_playing_status(status: str | None) -> bool:
     return bool(status and "playing" in status.casefold())
+
+
+def is_revealable_media(snapshot: MediaSnapshot) -> bool:
+    if snapshot.error:
+        return False
+    status = (snapshot.playback_status or "").casefold()
+    if status in {"unknown", "error"}:
+        return False
+    return snapshot.has_media
 
 
 def placeholder_pixmap(width: int, height: int) -> QPixmap:
