@@ -5,7 +5,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import replace
 from typing import Any, Callable
 
-from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QColor, QContextMenuEvent, QKeyEvent, QMouseEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -28,6 +28,43 @@ from app.media.session_selector import SourcePreference
 DEFAULT_ALBUM_ART_SIZE = 76
 MAX_ALBUM_ART_SIZE = 180
 TEXT_ROW_SPACING = 4
+
+
+class ElidedLabel(QLabel):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._full_text = ""
+
+    def setText(self, text: str) -> None:  # type: ignore[override]
+        self._full_text = text
+        self.refresh_elision()
+
+    def sizeHint(self) -> QSize:  # type: ignore[override]
+        hint = super().sizeHint()
+        return QSize(0, hint.height())
+
+    def minimumSizeHint(self) -> QSize:  # type: ignore[override]
+        hint = super().minimumSizeHint()
+        return QSize(0, hint.height())
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        self.refresh_elision()
+
+    def changeEvent(self, event) -> None:  # type: ignore[override]
+        super().changeEvent(event)
+        if event.type() in (QEvent.FontChange, QEvent.StyleChange):
+            self.refresh_elision()
+
+    def refresh_elision(self) -> None:
+        width = self.contentsRect().width()
+        text = self._full_text
+        if width > 0:
+            text = self.fontMetrics().elidedText(self._full_text, Qt.ElideRight, width)
+
+        if QLabel.text(self) != text:
+            QLabel.setText(self, text)
+        self.setToolTip(self._full_text if text != self._full_text else "")
 
 
 class OverlayWindow(QWidget):
@@ -105,20 +142,22 @@ class OverlayWindow(QWidget):
         text_layout.setSpacing(4)
         card_layout.addLayout(text_layout, stretch=1)
 
-        self.title_label = QLabel(self.card)
+        self.title_label = ElidedLabel(self.card)
         self.title_label.setObjectName("title")
         self.title_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.title_label.setTextInteractionFlags(Qt.NoTextInteraction)
         self.title_label.installEventFilter(self)
         text_layout.addWidget(self.title_label)
 
-        self.artist_label = QLabel(self.card)
+        self.artist_label = ElidedLabel(self.card)
         self.artist_label.setObjectName("artist")
+        self.artist_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.artist_label.installEventFilter(self)
         text_layout.addWidget(self.artist_label)
 
-        self.album_label = QLabel(self.card)
+        self.album_label = ElidedLabel(self.card)
         self.album_label.setObjectName("album")
+        self.album_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.album_label.installEventFilter(self)
         text_layout.addWidget(self.album_label)
 
@@ -210,6 +249,7 @@ class OverlayWindow(QWidget):
             }}
             """
         )
+        self._refresh_elided_labels()
         self._update_album_art_size(refresh_pixmap=True)
         self._resize_to_content_height()
 
@@ -491,6 +531,11 @@ class OverlayWindow(QWidget):
         self.progress.setVisible(show_progress)
         self.time_label.setVisible(show_time)
         self.bottom_widget.setVisible(show_progress or show_time)
+
+    def _refresh_elided_labels(self) -> None:
+        self.title_label.refresh_elision()
+        self.artist_label.refresh_elision()
+        self.album_label.refresh_elision()
 
     def _update_album_art_size(self, *, refresh_pixmap: bool = False) -> None:
         if not self.show_album_art_enabled():
