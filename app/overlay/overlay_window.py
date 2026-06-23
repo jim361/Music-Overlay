@@ -25,6 +25,11 @@ from app.media.now_playing_provider import NowPlayingProvider
 from app.media.session_selector import SourcePreference
 
 
+DEFAULT_ALBUM_ART_SIZE = 76
+MAX_ALBUM_ART_SIZE = 180
+TEXT_ROW_SPACING = 4
+
+
 class OverlayWindow(QWidget):
     snapshot_ready = Signal(object)
     snapshot_updated = Signal(object)
@@ -45,6 +50,7 @@ class OverlayWindow(QWidget):
         self._last_pixmap: QPixmap | None = None
         self._display_snapshot: MediaSnapshot | None = None
         self._display_snapshot_time = 0.0
+        self._album_art_size = DEFAULT_ALBUM_ART_SIZE
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="media-provider")
         self._pending_snapshot: Future[MediaSnapshot] | None = None
         self.open_settings: Callable[[], None] | None = None
@@ -89,7 +95,7 @@ class OverlayWindow(QWidget):
 
         self.album_art = QLabel(self.card)
         self.album_art.setObjectName("albumArt")
-        self.album_art.setFixedSize(76, 76)
+        self.album_art.setFixedSize(DEFAULT_ALBUM_ART_SIZE, DEFAULT_ALBUM_ART_SIZE)
         self.album_art.setScaledContents(True)
         self.album_art.installEventFilter(self)
         card_layout.addWidget(self.album_art)
@@ -204,6 +210,8 @@ class OverlayWindow(QWidget):
             }}
             """
         )
+        self._update_album_art_size(refresh_pixmap=True)
+        self._resize_to_content_height()
 
     def _restore_position(self) -> None:
         position = self.settings.window_position()
@@ -240,6 +248,8 @@ class OverlayWindow(QWidget):
         self.album_label.setVisible(bool(self.theme["layout"]["show_album"]) and bool(album))
         self.update_progress_display()
         self._sync_display_visibility()
+        self._update_album_art_size()
+        self._resize_to_content_height()
         if self.show_album_art_enabled():
             self._update_album_art(snapshot)
         self.snapshot_updated.emit(snapshot)
@@ -416,6 +426,8 @@ class OverlayWindow(QWidget):
     def set_show_album_art(self, enabled: bool) -> None:
         self.settings.update_overlay_option("show_album_art", bool(enabled))
         self.album_art.setVisible(self.show_album_art_enabled())
+        self._update_album_art_size(refresh_pixmap=enabled)
+        self._resize_to_content_height()
         if enabled:
             self._last_track_key = None
             self.refresh()
@@ -427,6 +439,8 @@ class OverlayWindow(QWidget):
     def set_show_time(self, enabled: bool) -> None:
         self.settings.update_overlay_option("show_time", bool(enabled))
         self._sync_display_visibility()
+        self._update_album_art_size(refresh_pixmap=True)
+        self._resize_to_content_height()
 
     def show_progress_bar_enabled(self) -> bool:
         layout = self.theme.get("layout", {})
@@ -438,6 +452,8 @@ class OverlayWindow(QWidget):
     def set_show_progress_bar(self, enabled: bool) -> None:
         self.settings.update_overlay_option("show_progress_bar", bool(enabled))
         self._sync_display_visibility()
+        self._update_album_art_size(refresh_pixmap=True)
+        self._resize_to_content_height()
 
     def background_opacity(self) -> float:
         overlay = self.settings.get("overlay", {})
@@ -475,6 +491,43 @@ class OverlayWindow(QWidget):
         self.progress.setVisible(show_progress)
         self.time_label.setVisible(show_time)
         self.bottom_widget.setVisible(show_progress or show_time)
+
+    def _update_album_art_size(self, *, refresh_pixmap: bool = False) -> None:
+        if not self.show_album_art_enabled():
+            return
+
+        target_size = self._text_stack_height()
+        target_size = max(DEFAULT_ALBUM_ART_SIZE, min(MAX_ALBUM_ART_SIZE, target_size))
+        if target_size == self._album_art_size:
+            return
+
+        self._album_art_size = target_size
+        self.album_art.setFixedSize(target_size, target_size)
+        self._last_track_key = None
+        if refresh_pixmap and self._display_snapshot is not None:
+            self._update_album_art(self._display_snapshot)
+
+    def _text_stack_height(self) -> int:
+        visible_rows = [
+            self.title_label,
+            self.artist_label,
+            self.album_label,
+            self.bottom_widget,
+        ]
+        heights = [
+            max(widget.sizeHint().height(), widget.minimumSizeHint().height())
+            for widget in visible_rows
+            if not widget.isHidden()
+        ]
+        if not heights:
+            return DEFAULT_ALBUM_ART_SIZE
+        return sum(heights) + (len(heights) - 1) * TEXT_ROW_SPACING
+
+    def _resize_to_content_height(self) -> None:
+        self.layout().activate()
+        minimum_height = int(self.theme["window"]["height"])
+        target_height = max(minimum_height, self.sizeHint().height())
+        self.resize(self.width(), target_height)
 
     def set_overlay_visible(self, visible: bool) -> None:
         if visible:
