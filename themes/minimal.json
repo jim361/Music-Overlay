@@ -9,7 +9,8 @@
     "show_album_art": false,
     "show_album": false,
     "show_progress_bar": true,
-    "progress_width": 150
+    "progress_width": 150,
+    "text_width": 296
   },
   "style": {
     "title_size": 13,

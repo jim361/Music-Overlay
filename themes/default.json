@@ -9,7 +9,8 @@
     "show_album_art": true,
     "show_album": true,
     "show_progress_bar": true,
-    "progress_width": 168
+    "progress_width": 168,
+    "text_width": 440
   },
   "style": {
     "font_family": "Segoe UI",

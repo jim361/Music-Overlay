@@ -20,6 +20,7 @@ DEFAULT_THEME: dict[str, Any] = {
         "show_album": True,
         "show_progress_bar": True,
         "progress_width": 168,
+        "text_width": 440,
     },
     "style": {
         "font_family": "Segoe UI",

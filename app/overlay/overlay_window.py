@@ -27,6 +27,11 @@ from app.media.session_selector import SourcePreference
 
 DEFAULT_ALBUM_ART_SIZE = 76
 MAX_ALBUM_ART_SIZE = 180
+CARD_MARGIN = 12
+CARD_SPACING = 12
+DEFAULT_TEXT_WIDTH = 440
+MIN_TEXT_WIDTH = 180
+MAX_TEXT_WIDTH = 760
 TEXT_ROW_SPACING = 4
 
 
@@ -127,8 +132,8 @@ class OverlayWindow(QWidget):
         root.addWidget(self.card)
 
         card_layout = QHBoxLayout(self.card)
-        card_layout.setContentsMargins(12, 12, 12, 12)
-        card_layout.setSpacing(12)
+        card_layout.setContentsMargins(CARD_MARGIN, CARD_MARGIN, CARD_MARGIN, CARD_MARGIN)
+        card_layout.setSpacing(CARD_SPACING)
 
         self.album_art = QLabel(self.card)
         self.album_art.setObjectName("albumArt")
@@ -137,10 +142,15 @@ class OverlayWindow(QWidget):
         self.album_art.installEventFilter(self)
         card_layout.addWidget(self.album_art)
 
-        text_layout = QVBoxLayout()
+        self.text_panel = QWidget(self.card)
+        self.text_panel.setObjectName("textPanel")
+        self.text_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        self.text_panel.installEventFilter(self)
+
+        text_layout = QVBoxLayout(self.text_panel)
         text_layout.setContentsMargins(0, 0, 0, 0)
         text_layout.setSpacing(4)
-        card_layout.addLayout(text_layout, stretch=1)
+        card_layout.addWidget(self.text_panel, stretch=0)
 
         self.title_label = ElidedLabel(self.card)
         self.title_label.setObjectName("title")
@@ -249,9 +259,8 @@ class OverlayWindow(QWidget):
             }}
             """
         )
-        self._refresh_elided_labels()
         self._update_album_art_size(refresh_pixmap=True)
-        self._resize_to_content_height()
+        self._resize_to_content()
 
     def _restore_position(self) -> None:
         position = self.settings.window_position()
@@ -289,7 +298,7 @@ class OverlayWindow(QWidget):
         self.update_progress_display()
         self._sync_display_visibility()
         self._update_album_art_size()
-        self._resize_to_content_height()
+        self._resize_to_content()
         if self.show_album_art_enabled():
             self._update_album_art(snapshot)
         self.snapshot_updated.emit(snapshot)
@@ -467,7 +476,7 @@ class OverlayWindow(QWidget):
         self.settings.update_overlay_option("show_album_art", bool(enabled))
         self.album_art.setVisible(self.show_album_art_enabled())
         self._update_album_art_size(refresh_pixmap=enabled)
-        self._resize_to_content_height()
+        self._resize_to_content()
         if enabled:
             self._last_track_key = None
             self.refresh()
@@ -480,7 +489,7 @@ class OverlayWindow(QWidget):
         self.settings.update_overlay_option("show_time", bool(enabled))
         self._sync_display_visibility()
         self._update_album_art_size(refresh_pixmap=True)
-        self._resize_to_content_height()
+        self._resize_to_content()
 
     def show_progress_bar_enabled(self) -> bool:
         layout = self.theme.get("layout", {})
@@ -493,7 +502,7 @@ class OverlayWindow(QWidget):
         self.settings.update_overlay_option("show_progress_bar", bool(enabled))
         self._sync_display_visibility()
         self._update_album_art_size(refresh_pixmap=True)
-        self._resize_to_content_height()
+        self._resize_to_content()
 
     def background_opacity(self) -> float:
         overlay = self.settings.get("overlay", {})
@@ -537,6 +546,17 @@ class OverlayWindow(QWidget):
         self.artist_label.refresh_elision()
         self.album_label.refresh_elision()
 
+    def _apply_text_width(self, width: int) -> None:
+        self.text_panel.setFixedWidth(width)
+        for widget in (
+            self.title_label,
+            self.artist_label,
+            self.album_label,
+            self.bottom_widget,
+        ):
+            widget.setFixedWidth(width)
+        self._refresh_elided_labels()
+
     def _update_album_art_size(self, *, refresh_pixmap: bool = False) -> None:
         if not self.show_album_art_enabled():
             return
@@ -568,11 +588,41 @@ class OverlayWindow(QWidget):
             return DEFAULT_ALBUM_ART_SIZE
         return sum(heights) + (len(heights) - 1) * TEXT_ROW_SPACING
 
-    def _resize_to_content_height(self) -> None:
+    def _resize_to_content(self) -> None:
+        text_width = self._target_text_width()
+        target_width = self._target_window_width(text_width)
+        self.setFixedWidth(target_width)
+        self.card.setFixedWidth(target_width)
+        self._apply_text_width(text_width)
         self.layout().activate()
         minimum_height = int(self.theme["window"]["height"])
         target_height = max(minimum_height, self.sizeHint().height())
-        self.resize(self.width(), target_height)
+        self.resize(target_width, target_height)
+
+    def _target_window_width(self, text_width: int) -> int:
+        art_width = self._album_art_size if self.show_album_art_enabled() else 0
+        spacing = CARD_SPACING if art_width else 0
+        return CARD_MARGIN * 2 + art_width + spacing + text_width
+
+    def _target_text_width(self) -> int:
+        layout = self.theme.get("layout", {})
+        fallback = self._fallback_text_width()
+        try:
+            value = int(layout.get("text_width", fallback))
+        except (TypeError, ValueError):
+            value = fallback
+        return max(MIN_TEXT_WIDTH, min(MAX_TEXT_WIDTH, value))
+
+    def _fallback_text_width(self) -> int:
+        try:
+            window_width = int(self.theme["window"]["width"])
+        except (KeyError, TypeError, ValueError):
+            return DEFAULT_TEXT_WIDTH
+
+        art_width = DEFAULT_ALBUM_ART_SIZE if self.show_album_art_enabled() else 0
+        spacing = CARD_SPACING if art_width else 0
+        available = window_width - CARD_MARGIN * 2 - art_width - spacing
+        return max(MIN_TEXT_WIDTH, available)
 
     def set_overlay_visible(self, visible: bool) -> None:
         if visible:
